@@ -1,0 +1,17 @@
+  body {
+    font-family: Arial, sans-serif;
+  }
+  h4, h5 {
+    margin-bottom: 5px;
+    color: #2c3e50;
+  }
+  ul {
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 5px;
+  }
+  hr {
+    border: 0;
+    border-top: 1px solid #ccc;
+  }

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fitness Profile Form</title>
+    <link rel="stylesheet" href="../static/style.css">
+  </head>
+  <body>
+    <h2>Fitness Profile Form</h2>
+    <form id="fitnessForm">
+      <label for="name">Name:</label><br />
+      <input type="text" id="name" name="name" required /><br /><br />
+
+      <label for="age">Age:</label><br />
+      <input
+        type="number"
+        id="age"
+        name="age"
+        min="10"
+        max="100"
+        required
+      /><br /><br />
+
+      <label for="gender">Gender:</label><br />
+      <select id="gender" name="gender" required>
+        <option value="">--Select--</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option></select
+      ><br /><br />
+
+      <label for="goal">Fitness Goal:</label><br />
+      <select id="goal" name="goal" required>
+        <option value="">--Select--</option>
+        <option value="muscle_gain">Muscle Gain</option>
+        <option value="fat_loss">Fat Loss</option>
+        <option value="general_fitness">General Fitness</option></select
+      ><br /><br />
+
+      <label for="experience">Experience Level:</label><br />
+      <select id="experience" name="experience" required>
+        <option value="">--Select--</option>
+        <option value="beginner">Beginner</option>
+        <option value="intermediate">Intermediate</option>
+        <option value="advanced">Advanced</option></select
+      ><br /><br />
+
+      <label>Available Equipment:</label><br />
+      <input type="checkbox" name="equipment" value="dumbbells" />
+      Dumbbells<br />
+      <input type="checkbox" name="equipment" value="bench" /> Bench<br />
+      <input type="checkbox" name="equipment" value="bodyweight" /> Body
+      Weight<br />
+      <input type="checkbox" name="equipment" value="resistance_band" />
+      Resistance Band<br /><br />
+
+      <label for="days_per_week">Workout Days per Week:</label><br />
+      <input
+        type="number"
+        id="days_per_week"
+        name="days_per_week"
+        min="1"
+        max="7"
+        required
+      /><br /><br />
+
+      <button type="submit">Submit</button>
+    </form>
+
+    <h3>Workout Plan</h3>
+    <!-- This is where the plan will be displayed -->
+    <div id="planDisplay"></div>
+
+    <script>
+      document
+        .getElementById("fitnessForm")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+
+          const form = event.target;
+
+          const equipment = Array.from(
+            form.querySelectorAll('input[name="equipment"]:checked')
+          ).map((el) => el.value);
+
+          const data = {
+            name: form.name.value,
+            age: parseInt(form.age.value),
+            gender: form.gender.value,
+            goal: form.goal.value,
+            experience: form.experience.value,
+            equipment: equipment,
+            days_per_week: parseInt(form.days_per_week.value),
+          };
+
+          const response = await fetch("http://127.0.0.1:8000/generate-plan", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
+
+          const result = await response.json();
+          console.log("Response from backend:", response);
+          console.log("Name from response:", result.name);
+          console.log("Workout Plan from response:", result.plan);
+
+          const planDisplay = document.getElementById("planDisplay");
+
+          // You can format the response as needed. Here's an example:
+          // Generate HTML from the plan array
+          const planItems = result.plan
+            .map((item, index) => {
+              // Format each object into a readable string (customize as per structure)
+              return `<li><strong>Day ${index + 1}:</strong> ${
+                item.day || ""
+              } - ${item.workout || JSON.stringify(item)}</li>`;
+            })
+            .join("");
+
+          // Display everything
+          planDisplay.innerHTML = `
+  <h4>Name: ${result.name}</h4>
+  <h4>Goal: ${result.goal.replace("_", " ").toUpperCase()}</h4>
+  <hr />
+  ${result.plan
+    .map(
+      (day, i) => `
+    <div style="margin-bottom: 20px;">
+      <h5>Day ${i + 1} - ${day.date}</h5>
+
+      ${["warmup", "main", "cooldown"]
+        .map((section) => {
+          if (day.sections[section] && day.sections[section].length > 0) {
+            return `
+              <strong>${
+                section.charAt(0).toUpperCase() + section.slice(1)
+              }</strong>
+              <ul>
+                ${day.sections[section]
+                  .map(
+                    (ex) => `
+                    <li>
+                      <strong>${ex.name}</strong> 
+                      (${ex.muscle_group}) – ${ex.sets} sets × ${ex.reps} reps – ${ex.duration}
+                    </li>`
+                  )
+                  .join("")}
+              </ul>
+            `;
+          }
+          return "";
+        })
+        .join("")}
+    </div>
+    <hr />
+  `
+    )
+    .join("")}
+`;
+
+          alert("Check console for response!");
+        });
+    </script>
+  </body>
+</html>

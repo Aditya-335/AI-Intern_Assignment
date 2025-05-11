@@ -1,6 +1,6 @@
 name,muscle_group,equipment,type,level,goal,sets,reps,duration
 Jumping Jacks,full_body,bodyweight,warmup,all,fat_loss,1,30,2 min
-High Knees,cardio,bodyweight,warmup,all,fat_loss,1,30,1 min
+High Knees,cardio,resistance_band,warmup,all,fat_loss,1,30,1 min
 Arm Circles,shoulders,bodyweight,warmup,all,all,2,15,1 min
 Mountain Climbers,core,bodyweight,warmup,intermediate,fat_loss,2,20,30 sec
 

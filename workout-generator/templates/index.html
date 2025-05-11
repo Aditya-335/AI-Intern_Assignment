@@ -2,7 +2,8 @@
 <html>
   <head>
     <title>Fitness Profile Form</title>
-    <link rel="stylesheet" href="../static/style.css">
+    <link rel="stylesheet" href="../static/style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   </head>
   <body>
     <h2>Fitness Profile Form</h2>
@@ -11,87 +12,66 @@
       <input type="text" id="name" name="name" required /><br /><br />
 
       <label for="age">Age:</label><br />
-      <input
-        type="number"
-        id="age"
-        name="age"
-        min="10"
-        max="100"
-        required
-      /><br /><br />
+      <input type="number" id="age" name="age" min="10" max="100" required /><br /><br />
 
       <label for="gender">Gender:</label><br />
       <select id="gender" name="gender" required>
         <option value="">--Select--</option>
         <option value="male">Male</option>
         <option value="female">Female</option>
-        <option value="other">Other</option></select
-      ><br /><br />
+        <option value="other">Other</option>
+      </select><br /><br />
 
       <label for="goal">Fitness Goal:</label><br />
       <select id="goal" name="goal" required>
         <option value="">--Select--</option>
         <option value="muscle_gain">Muscle Gain</option>
         <option value="fat_loss">Fat Loss</option>
-        <option value="general_fitness">General Fitness</option></select
-      ><br /><br />
+        <option value="general_fitness">General Fitness</option>
+      </select><br /><br />
 
       <label for="experience">Experience Level:</label><br />
       <select id="experience" name="experience" required>
         <option value="">--Select--</option>
         <option value="beginner">Beginner</option>
         <option value="intermediate">Intermediate</option>
-        <option value="advanced">Advanced</option></select
-      ><br /><br />
+        <option value="advanced">Advanced</option>
+      </select><br /><br />
 
       <label>Available Equipment:</label><br />
-      <input type="checkbox" name="equipment" value="dumbbells" />
-      Dumbbells<br />
+      <input type="checkbox" name="equipment" value="dumbbells" /> Dumbbells<br />
       <input type="checkbox" name="equipment" value="bench" /> Bench<br />
-      <input type="checkbox" name="equipment" value="bodyweight" /> Body
-      Weight<br />
-      <input type="checkbox" name="equipment" value="resistance_band" />
-      Resistance Band<br /><br />
+      <input type="checkbox" name="equipment" value="bodyweight" /> Body Weight<br />
+      <input type="checkbox" name="equipment" value="resistance_band" /> Resistance Band<br /><br />
 
       <label for="days_per_week">Workout Days per Week:</label><br />
-      <input
-        type="number"
-        id="days_per_week"
-        name="days_per_week"
-        min="1"
-        max="7"
-        required
-      /><br /><br />
+      <input type="number" id="days_per_week" name="days_per_week" min="1" max="7" required /><br /><br />
 
       <button type="submit">Submit</button>
     </form>
 
     <h3>Workout Plan</h3>
-    <!-- This is where the plan will be displayed -->
     <div id="planDisplay"></div>
+    <button id="downloadPDF" style="display: none;">Download PDF</button>
 
     <script>
-      document
-        .getElementById("fitnessForm")
-        .addEventListener("submit", async function (event) {
-          event.preventDefault();
+      document.getElementById("fitnessForm").addEventListener("submit", async function (event) {
+        event.preventDefault();
 
-          const form = event.target;
+        const form = event.target;
+        const equipment = Array.from(form.querySelectorAll('input[name="equipment"]:checked')).map(el => el.value);
 
-          const equipment = Array.from(
-            form.querySelectorAll('input[name="equipment"]:checked')
-          ).map((el) => el.value);
+        const data = {
+          name: form.name.value,
+          age: parseInt(form.age.value),
+          gender: form.gender.value,
+          goal: form.goal.value,
+          experience: form.experience.value,
+          equipment: equipment,
+          days_per_week: parseInt(form.days_per_week.value),
+        };
 
-          const data = {
-            name: form.name.value,
-            age: parseInt(form.age.value),
-            gender: form.gender.value,
-            goal: form.goal.value,
-            experience: form.experience.value,
-            equipment: equipment,
-            days_per_week: parseInt(form.days_per_week.value),
-          };
-
+        try {
           const response = await fetch("http://127.0.0.1:8000/generate-plan", {
             method: "POST",
             headers: {
@@ -101,66 +81,65 @@
           });
 
           const result = await response.json();
-          console.log("Response from backend:", response);
-          console.log("Name from response:", result.name);
-          console.log("Workout Plan from response:", result.plan);
-
           const planDisplay = document.getElementById("planDisplay");
+          let html = `
+            <h4>Name: ${result.name}</h4>
+            <h4>Goal: ${result.goal.replace("_", " ").toUpperCase()}</h4>
+            <hr />
+          `;
 
-          // You can format the response as needed. Here's an example:
-          // Generate HTML from the plan array
-          const planItems = result.plan
-            .map((item, index) => {
-              // Format each object into a readable string (customize as per structure)
-              return `<li><strong>Day ${index + 1}:</strong> ${
-                item.day || ""
-              } - ${item.workout || JSON.stringify(item)}</li>`;
-            })
-            .join("");
+          // Loop through each day's plan
+          result.plan.forEach((day, i) => {
+            html += `<div style="margin-bottom: 20px;">
+              <h5>Day ${i + 1} - ${day.date}</h5>`;
 
-          // Display everything
-          planDisplay.innerHTML = `
-  <h4>Name: ${result.name}</h4>
-  <h4>Goal: ${result.goal.replace("_", " ").toUpperCase()}</h4>
-  <hr />
-  ${result.plan
-    .map(
-      (day, i) => `
-    <div style="margin-bottom: 20px;">
-      <h5>Day ${i + 1} - ${day.date}</h5>
+            // Loop through each section: warmup, main, cooldown
+            ["warmup", "main", "cooldown"].forEach((section) => {
+              if (day.sections[section] && day.sections[section].length > 0) {
+                html += `<strong>${section.charAt(0).toUpperCase() + section.slice(1)}</strong>
+                  <ul>`;
+                day.sections[section].forEach((ex) => {
+                  html += `<li>
+                    <strong>${ex.name || "Exercise"}</strong>
+                    (${ex.muscle_group || "N/A"}) –
+                    ${ex.sets || "-"} sets × ${ex.reps || "-"} reps –
+                    ${ex.duration || "N/A"}
+                  </li>`;
+                });
+                html += `</ul>`;
+              }
+            });
 
-      ${["warmup", "main", "cooldown"]
-        .map((section) => {
-          if (day.sections[section] && day.sections[section].length > 0) {
-            return `
-              <strong>${
-                section.charAt(0).toUpperCase() + section.slice(1)
-              }</strong>
-              <ul>
-                ${day.sections[section]
-                  .map(
-                    (ex) => `
-                    <li>
-                      <strong>${ex.name}</strong> 
-                      (${ex.muscle_group}) – ${ex.sets} sets × ${ex.reps} reps – ${ex.duration}
-                    </li>`
-                  )
-                  .join("")}
-              </ul>
-            `;
-          }
-          return "";
-        })
-        .join("")}
-    </div>
-    <hr />
-  `
-    )
-    .join("")}
-`;
+            html += `</div><hr />`;
+          });
 
-          alert("Check console for response!");
-        });
+          planDisplay.innerHTML = html;
+          document.getElementById("downloadPDF").style.display = "block"; // Show the download button
+        } catch (error) {
+          console.error("Error fetching plan:", error);
+          alert("Something went wrong. Please try again later.");
+        }
+      });
+
+      // Handle the PDF download
+      document.getElementById("downloadPDF").addEventListener("click", function () {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const planDisplay = document.getElementById("planDisplay");
+        let content = planDisplay.innerText; // Extract text from the generated plan
+
+        // Add title
+        doc.setFontSize(18);
+        doc.text("Fitness Workout Plan", 14, 20);
+
+        // Add the workout plan content
+        doc.setFontSize(12);
+        doc.text(content, 14, 30);
+
+        // Save PDF
+        doc.save("workout_plan.pdf");
+      });
     </script>
   </body>
 </html>

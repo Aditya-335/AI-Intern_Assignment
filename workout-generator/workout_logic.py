@@ -1,65 +1,47 @@
-from exercises_loader import load_exercises
 import datetime
+import json
+import re
+from groq_api import call_groq
+from exercises_loader import load_exercises_csv_as_text
 
-exercises = load_exercises()
-
-def filter_exercises(user, section, focus=None):
-    # Primary strict filter
-    filtered = [
-        e for e in exercises
-        if e["type"] == section and
-           (e["level"] == user["experience"] or e["level"] == "all") and
-           (e["equipment"] in user["equipment"] or e["equipment"] in ["none", "bodyweight"])
-    ]
-
-    # Further filter by push/pull focus for main section
-    if section == "main" and focus:
-        if focus == "push":
-            filtered = [e for e in filtered if e.get("muscle_group") in ["chest", "shoulders", "triceps"]]
-        elif focus == "pull":
-            filtered = [e for e in filtered if e.get("muscle_group") in ["back", "biceps"]]
-
-    # Relax filtering for warmup and cooldown if no results
-    if not filtered and section in ["warmup", "cooldown"]:
-        filtered = [e for e in exercises if e["type"] == section]
-
-    return filtered
+EXERCISES_CSV_TEXT = load_exercises_csv_as_text()
 
 
 
-def get_session_date(start_date, session_num, days_per_week):
-    week = (session_num - 1) // days_per_week
-    day = (session_num - 1) % days_per_week
-    return start_date + datetime.timedelta(weeks=week, days=day)
+def extract_json_from_response(response: str):
+    """
+    Extract JSON array from response, handling cases where it is wrapped in Markdown-style code blocks.
+    """
+    match = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", response, re.DOTALL)
+    if match:
+        return match.group(1)
+    return response  
 
-def generate_workout_plan(user):
-    plan = []
-    start_date = datetime.date(2025, 5, 6)
+def generate_workout_plan_via_ai(user_profile: dict):
+    prompt = f"""
+You are a fitness expert AI. I will provide a CSV dataset of exercises and a user profile.
+Using ONLY the exercises from the CSV data, generate a **12-session workout plan** for the user.
+Each session should include warmup, main, cooldown sections with detailed exercises.
+Return the output as a JSON array with keys: session (int), date (YYYY-MM-DD), sections (warmup, main, cooldown),
+and each exercise with name, muscle_group, equipment, sets, reps, duration.
 
-    for i in range(1, 13):
-        week = (i - 1) // 3
-        reps = 10 + (week % 2) * 2
-        sets = 3 + (week // 2)
+CSV Data:
+{EXERCISES_CSV_TEXT}
 
-        # Alternate push/pull for main
-        focus = "push" if i % 2 != 0 else "pull"
+User Profile:
+{json.dumps(user_profile, indent=2)}
 
-        warmup = filter_exercises(user, "warmup")[:2]
-        main = filter_exercises(user, "main", focus=focus)[:2]
-        cooldown = filter_exercises(user, "cooldown")[:2]
+The plan dates should start from today ({datetime.date.today()}) and increase by one day for each session.
+Generate a JSON array as described.
+**ONLY return valid JSON. Do not include any markdown formatting or explanation. Double-check that every object has all required keys and that the JSON is valid.**
+    """
 
-        # Add sets/reps to main
-        for m in main:
-            m["sets"] = sets
-            m["reps"] = reps
+    response = call_groq(prompt)
 
-        plan.append({
-            "session": i,
-            "date": str(get_session_date(start_date, i, user["days_per_week"])),
-            "sections": {
-                "warmup": warmup,
-                "main": main,
-                "cooldown": cooldown
-            }
-        })
+    try:
+        clean_json = extract_json_from_response(response)
+        plan = json.loads(clean_json)
+    except Exception as e:
+        raise ValueError(f"Failed to parse AI response as JSON: {e}\nResponse was:\n{response}")
+
     return plan

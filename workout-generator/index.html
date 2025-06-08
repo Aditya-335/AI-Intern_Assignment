@@ -72,7 +72,7 @@
         };
 
         try {
-          const response = await fetch("https://workout-api-ly7k.onrender.com/generate-plan", {
+          const response = await fetch("http://127.0.0.1:8000/generate-plan", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -84,34 +84,38 @@
           const planDisplay = document.getElementById("planDisplay");
           let html = `
             <h4>Name: ${result.name}</h4>
-            <h4>Goal: ${result.goal.replace("_", " ").toUpperCase()}</h4>
+            <h4>Goal: ${(result.goal ? result.goal.replace("_", " ").toUpperCase() : "N/A")}</h4>
             <hr />
           `;
 
-          // Loop through each day's plan
-          result.plan.forEach((day, i) => {
-            html += `<div style="margin-bottom: 20px;">
-              <h5>Day ${i + 1} - ${day.date}</h5>`;
+// Loop through each day's plan
+if (Array.isArray(result.plan)) {
+  result.plan.forEach((day, i) => {
+    html += `<div style="margin-bottom: 20px;">
+      <h5>Day ${i + 1} - ${day.date}</h5>`;
 
-            // Loop through each section: warmup, main, cooldown
-            ["warmup", "main", "cooldown"].forEach((section) => {
-              if (day.sections[section] && day.sections[section].length > 0) {
-                html += `<strong>${section.charAt(0).toUpperCase() + section.slice(1)}</strong>
-                  <ul>`;
-                day.sections[section].forEach((ex) => {
-                  html += `<li>
-                    <strong>${ex.name || "Exercise"}</strong>
-                    (${ex.muscle_group || "N/A"}) –
-                    ${ex.sets || "-"} sets × ${ex.reps || "-"} reps –
-                    ${ex.duration || "N/A"}
-                  </li>`;
-                });
-                html += `</ul>`;
-              }
-            });
+    // Loop through each section: warmup, main, cooldown
+    ["warmup", "main", "cooldown"].forEach((section) => {
+      if (day.sections[section] && day.sections[section].length > 0) {
+        html += `<strong>${section.charAt(0).toUpperCase() + section.slice(1)}</strong>
+          <ul>`;
+        day.sections[section].forEach((ex) => {
+          html += `<li>
+            <strong>${ex.name || "Exercise"}</strong>
+            (${ex.muscle_group || "N/A"}) –
+            ${ex.sets || "-"} sets × ${ex.reps || "-"} reps –
+            ${ex.duration || "N/A"}
+          </li>`;
+        });
+        html += `</ul>`;
+      }
+    });
 
-            html += `</div><hr />`;
-          });
+    html += `</div><hr />`;
+  });
+} else {
+  html += `<p>No plan data available.</p>`;
+}
 
           planDisplay.innerHTML = html;
           document.getElementById("downloadPDF").style.display = "block"; // Show the download button
